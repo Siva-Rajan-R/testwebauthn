@@ -1,7 +1,7 @@
-import sys
+"""import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))"""
+import os
 from fastapi import APIRouter,HTTPException,Depends
 from webauthn import generate_registration_options,verify_registration_response,options_to_json
 from webauthn.helpers.structs import AuthenticatorSelectionCriteria,AuthenticatorAttachment,AttestationConveyancePreference
