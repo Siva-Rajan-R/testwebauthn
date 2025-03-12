@@ -9,5 +9,6 @@ icecream
 pydantic
 pydantic[email]
 python-dotenv
+psycopg2-binary
 psycopg2
 geopy
