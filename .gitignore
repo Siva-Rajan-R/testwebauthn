@@ -1,0 +1,7 @@
+pycache
+employee.db
+.env
+test.py
+__pycache__
+localhost.pem
+localhost-key.pem

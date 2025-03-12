@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-multipart
+setuptools
+webauthn
+argon2-cffi
+sqlalchemy
+icecream
+pydantic
+pydantic[email]
+python-dotenv
+psycopg2
