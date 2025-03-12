@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from routes import registeration,authentication,resources
+from api.routes import registeration,authentication,resources
 
 app=FastAPI()
 app.add_middleware(

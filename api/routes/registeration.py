@@ -5,13 +5,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from fastapi import APIRouter,HTTPException,Depends
 from webauthn import generate_registration_options,verify_registration_response,options_to_json
 from webauthn.helpers.structs import AuthenticatorSelectionCriteria,AuthenticatorAttachment,AttestationConveyancePreference
-from schemas.resgisteration import Register,Verify
+from ..schemas.resgisteration import Register,Verify
 from database.operation import RegisterWebauthnEmployee,Session
 from database.main import get_db_session
 import secrets
 from icecream import ic
-"""from dotenv import load_dotenv
-load_dotenv()"""
+from dotenv import load_dotenv
+load_dotenv()
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")

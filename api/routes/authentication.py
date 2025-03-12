@@ -6,7 +6,7 @@ from fastapi import APIRouter,HTTPException,Depends,BackgroundTasks,Request
 from fastapi.responses import JSONResponse
 from webauthn import generate_authentication_options,verify_authentication_response,options_to_json
 from webauthn.helpers.structs import UserVerificationRequirement
-from schemas.authentication import Authenticate,Verify
+from ..schemas.authentication import Authenticate,Verify
 from database.operation import AuthenticationWebauthnEmployee,Session
 from database.main import get_db_session
 import secrets
