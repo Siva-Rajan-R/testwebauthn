@@ -12,8 +12,8 @@ from database.main import get_db_session
 import secrets
 import base64
 from icecream import ic
-from dotenv import load_dotenv
-load_dotenv()
+"""from dotenv import load_dotenv
+load_dotenv()"""
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")
