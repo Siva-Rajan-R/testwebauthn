@@ -9,7 +9,6 @@ class Employee(Base):
     employee_name = Column(String, nullable=False)
     employee_email = Column(String, unique=True, nullable=False)
 
-    # Relationship to WebAuthn Credentials
     credentials =relationship("WebAuthnCredential",back_populates="employee")
 
 class WebAuthnCredential(Base):

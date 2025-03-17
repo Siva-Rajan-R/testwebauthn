@@ -3,17 +3,15 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 import os
 from fastapi import APIRouter,HTTPException,Depends,BackgroundTasks,Request
-from fastapi.responses import JSONResponse
 from webauthn import generate_authentication_options,verify_authentication_response,options_to_json
 from webauthn.helpers.structs import UserVerificationRequirement
 from ..schemas.authentication import Authenticate,Verify
 from database.operation import AuthenticationWebauthnEmployee,Session
 from database.main import get_db_session
 import secrets
-import base64
 from icecream import ic
-"""from dotenv import load_dotenv
-load_dotenv()"""
+# from dotenv import load_dotenv
+# load_dotenv()
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")
@@ -72,6 +70,7 @@ async def employee_authentication_verify(details:Verify,request:Request,bgt:Back
     )
     credentials=await obj.get_credentials()
     ic(credentials)
+    ic(credentials[0])
     try:
         response=verify_authentication_response(
             credential=details.credentials,

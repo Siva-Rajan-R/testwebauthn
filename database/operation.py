@@ -15,6 +15,15 @@ class __RegisterInput:
         self.employee_email = employee_email
 
 class RegisterWebauthnEmployee(__RegisterInput):
+
+    async def is_employee_exists(self):
+        if not self.session.execute(select(Employee.employee_email).where(Employee.employee_email==self.employee_email,Employee.employee_name==self.employee_name)).scalar_one_or_none():
+            raise HTTPException(
+                status_code=404,
+                detail="employee doesn't exists"
+            )
+        return True
+    
     async def is_employee_notexists(self):
         if self.session.execute(select(Employee.employee_email).where(Employee.employee_email==self.employee_email)).scalar_one_or_none():
             raise HTTPException(
@@ -25,6 +34,7 @@ class RegisterWebauthnEmployee(__RegisterInput):
     
     async def add_registered_employee(self,credential_id:str,public_key:bytes,sign_count:int,aaguid:str):
         try:
+            ic(credential_id,public_key,sign_count,aaguid)
             with self.session.begin():
                 await self.is_employee_notexists()
 
@@ -44,11 +54,38 @@ class RegisterWebauthnEmployee(__RegisterInput):
                 )
 
                 self.session.add_all([employee,webauthnncred])
-
-                return JSONResponse(
-                    status_code=201,
-                    content="successfully employee registerd"
+                ic("successfullyy added")
+                # return JSONResponse(
+                #     status_code=201,
+                #     content="successfully employee registerd"
+                # )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"someething went wrong --> details : {e}"
+            )
+    
+    async def update_registered_employee(self,credential_id:str,public_key:bytes,sign_count:int,aaguid:str):
+        try:
+            ic(credential_id,public_key,sign_count,aaguid)
+            with self.session.begin():
+                await self.is_employee_exists()
+                employee_id=self.session.query(Employee.employee_id).filter(Employee.employee_email==self.employee_email).scalar()
+                self.session.query(WebAuthnCredential).filter(WebAuthnCredential.employee_id==employee_id).update(
+                    {
+                        WebAuthnCredential.credential_id:credential_id,
+                        WebAuthnCredential.public_key:public_key,
+                        WebAuthnCredential.sign_count:sign_count,
+                        WebAuthnCredential.aaguid:aaguid
+                    }
                 )
+                ic("successfullyy updated")
+                # return JSONResponse(
+                #     status_code=200,
+                #     content="successfully employee updated"
+                # )
         except HTTPException:
             raise
         except Exception as e:
@@ -111,46 +148,56 @@ class AuthenticationWebauthnEmployee(__AuthenticationInputs):
     
     async def is_employee_eligible(self,latitude:float,longitude:float,ip_address):
         try:
-            access_latitude,access_longitude=self.session.execute(select(ProtectedResourcesAccessCredentials.latitude,ProtectedResourcesAccessCredentials.longitude)).all()[0]
-            ic(access_latitude,access_longitude)
-            geo=geodesic((latitude,longitude),(access_latitude,access_longitude)).kilometers
-            ic(geo)
+            location=self.session.execute(select(ProtectedResourcesAccessCredentials.latitude,ProtectedResourcesAccessCredentials.longitude)).all()
+            if location:
+                access_latitude,access_longitude=location[0]
+                ic(access_latitude,access_longitude)
+                geo=geodesic((latitude,longitude),(access_latitude,access_longitude)).kilometers
+                ic(geo)
 
-            if self.session.query(
-                exists().where(
-                    ProtectedResourcesAccessCredentials.ip_address==ip_address
-                )
-            ).scalar() and geo<=1:
-                
+                if self.session.query(
+                    exists().where(
+                        ProtectedResourcesAccessCredentials.ip_address==ip_address
+                    )
+                ).scalar() and geo<=1:
+                    
+                    resources=self.session.execute(
+                        select(
+                            Resources.resource,
+                            Resources.is_protected
+                        )
+                    ).mappings().all()
+
+                    ic("naan chinna")
+                    ic(resources)
+
+                    return {
+                        "accessibility_scope":"both protected and unprotected resources",
+                        "resources":resources
+                    }
+
                 resources=self.session.execute(
-                    select(
-                        Resources.resource,
-                        Resources.is_protected
-                    )
-                ).mappings().all()
-
+                        select(
+                            Resources.resource,
+                            Resources.is_protected
+                        ).where(
+                            Resources.is_protected==False
+                        )
+                    ).mappings().all()
                 return {
-                    "accessibility_scope":"both protected and unprotected resources",
-                    "resources":resources
-                }
-
-            resources=self.session.execute(
-                    select(
-                        Resources.resource,
-                        Resources.is_protected
-                    ).where(
-                        Resources.is_protected==False
-                    )
-                ).mappings().all()
-            return {
-                    "accessibility_scope":"unprotected resources only",
-                    "resources":resources
-                }
-        
+                        "accessibility_scope":"unprotected resources only",
+                        "resources":resources
+                    }
+            raise HTTPException(
+                status_code=404,
+                detail="office location doesn't found,please try to add location or inform to admin "
+            )
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"something went wrong : {e}"
+                detail=f"somethingggg went wrong : {e}"
             ) 
     
     
