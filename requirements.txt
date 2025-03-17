@@ -8,5 +8,6 @@ sqlalchemy
 icecream
 pydantic
 pydantic[email]
-python-dotenv
-psycopg2
+python-dotenvgit
+psycopg2-binary
+geopy
