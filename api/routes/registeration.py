@@ -19,8 +19,8 @@ import base64
 from redis import Redis
 import json
 
-from dotenv import load_dotenv
-load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")
