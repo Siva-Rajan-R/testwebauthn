@@ -2,8 +2,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = os.getenv("SMTP_PORT")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
@@ -66,7 +66,7 @@ async def accept_email(href,employee_email,employee_username):
           </div>
 
           <p style="color:white;text-align:center;margin:20px 0 0 0;font-family:Arial,sans-serif;">
-            If you're not accepting this then leave it alone!,it will expired in 30sec
+            If you're not accepting this then leave it alone!,it will expired in 120 sec
           </p>
         </td>
       </tr>

@@ -9,20 +9,24 @@ from ..schemas.authentication import Authenticate,Verify
 from database.operation import AuthenticationWebauthnEmployee,Session
 from database.main import get_db_session
 import secrets
+from redis import Redis
+import json
 from icecream import ic
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")
 EXPECTED_ORIGIN=os.getenv("EXPECTED_ORIGIN")
 EXPECTED_RP_ID=os.getenv("EXPECTED_RP_ID")
+REDIS_SERVER_URL=os.getenv("REDIS_SERVER_URL")
 
+redis_cache=Redis.from_url(REDIS_SERVER_URL)
 router=APIRouter(
     tags=["Webauthn Authentication"]
 )
 
-challenges={}
+# challenges={}
 
 @router.post("/employee/authentication")
 async def employee_authentication(details:Authenticate,session:Session=Depends(get_db_session)):
@@ -40,7 +44,8 @@ async def employee_authentication(details:Authenticate,session:Session=Depends(g
         )
         ic(options)
 
-        challenges[details.employee_email]=options.challenge
+        #challenges[details.employee_email]=options.challenge
+        redis_cache.set(details.employee_email,options.challenge)
         return options_to_json(options)
     
     except HTTPException:
@@ -55,7 +60,8 @@ async def employee_authentication(details:Authenticate,session:Session=Depends(g
 @router.post("/employee/authentication/verify")
 async def employee_authentication_verify(details:Verify,request:Request,bgt:BackgroundTasks,session:Session=Depends(get_db_session)):
     ic(request.client.host,details.latitude,details.longitude)
-    ex_challenge=challenges.get(details.employee_email,0)
+    #challenges.get(details.employee_email,0)
+    ex_challenge=redis_cache.get(details.employee_email)
     raw_id=details.credentials.get("rawId",0)
     if not raw_id or not ex_challenge:
         raise HTTPException(
@@ -81,7 +87,8 @@ async def employee_authentication_verify(details:Verify,request:Request,bgt:Back
             credential_current_sign_count=credentials[0].get("sign_count")
         )
 
-        del challenges[details.employee_email]
+        #del challenges[details.employee_email]
+        redis_cache.delete(details.employee_email)
         bgt.add_task(obj.update_sign_count,response.new_sign_count,credentials[0].get("employee_id"))
         resource=await obj.is_employee_eligible(details.latitude,details.longitude,request.client.host)
         

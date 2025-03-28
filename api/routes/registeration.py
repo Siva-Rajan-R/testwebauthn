@@ -15,24 +15,27 @@ from icecream import ic
 from ..dependencies.email import accept_email,forgot_email
 from ..dependencies.greet import register_accept_greet,forgot_accept_greet,NOT_FOUND
 import time
-# from dotenv import load_dotenv
-# load_dotenv()
+import base64
+from redis import Redis
+import json
+
+from dotenv import load_dotenv
+load_dotenv()
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")
 EXPECTED_ORIGIN=os.getenv("EXPECTED_ORIGIN")
 EXPECTED_RP_ID=os.getenv("EXPECTED_RP_ID")
+REDIS_SERVER_URL=os.getenv("REDIS_SERVER_URL")
+
 
 router=APIRouter(
     tags=["Webauthn Register"]
 )
 
-challenges=dict()
-waiting_lis=dict()
+# challenges=dict()
+# waiting_lis=dict()
 
-async def remove_waiting_lis(link_id):
-    time.sleep(30)
-    del waiting_lis[link_id]
 
 @router.post("/employee/registeration")
 async def register_employee(details:Register,session:Session=Depends(get_db_session)):
@@ -60,7 +63,11 @@ async def register_employee(details:Register,session:Session=Depends(get_db_sess
         )
 
         ic(options)
-        challenges[details.employee_email]=options.challenge
+        #to store challenge
+        redis_cache=Redis.from_url(REDIS_SERVER_URL)
+        redis_cache.set(details.employee_email,options.challenge)
+
+        #challenges[details.employee_email]=options.challenge
         return options_to_json(options)
     
     except HTTPException:
@@ -74,9 +81,12 @@ async def register_employee(details:Register,session:Session=Depends(get_db_sess
 @router.post("/employee/registeration/verify")
 async def employee_verify(details:Verify,bgt:BackgroundTasks,request:Request):
     raw_id=details.credentials.get("rawId",0)
-    ex_challenge=challenges.get(details.employee_email,0)
-    
-    if not raw_id or not challenges:
+    #challenges.get(details.employee_email,0)
+    redis_cache=Redis.from_url(REDIS_SERVER_URL)
+    ex_challenge=redis_cache.get(details.employee_email)
+    ic("hello wrold")
+    ic(ex_challenge)
+    if not raw_id or not ex_challenge:
         raise HTTPException(
             status_code=404,
             detail="raw id or challenge not found"
@@ -92,19 +102,32 @@ async def employee_verify(details:Verify,bgt:BackgroundTasks,request:Request):
         )
         ic(response)
 
-        del challenges[details.employee_email]
+        #to delete challenge
+        redis_cache.delete(details.employee_email)
+        #del challenges[details.employee_email]
         
         link_id=str(uuid.uuid5(uuid.uuid4(),details.employee_email))
 
-        waiting_lis[link_id]={
+        # waiting_lis[link_id]={
+        #     "employee_email":details.employee_email,
+        #     "employee_name":details.employee_name,
+        #     "public_key":response.credential_public_key,
+        #     "sign_count":response.sign_count,
+        #     "aaguid":response.aaguid,
+        #     "credential_id":response.credential_id
+        # }
+
+        credentials={
             "employee_email":details.employee_email,
             "employee_name":details.employee_name,
-            "public_key":response.credential_public_key,
+            "public_key":base64.b64encode(response.credential_public_key).decode("utf-8"),
             "sign_count":response.sign_count,
             "aaguid":response.aaguid,
-            "credential_id":response.credential_id
+            "credential_id":base64.b64encode(response.credential_id).decode("utf-8")
         }
-        
+        ic("next")
+        redis_cache.setex(link_id,120,json.dumps(credentials))
+        ic("i think so")
         href=f"{request.base_url}employee/registeration/store/{link_id}"
         ic(href)
         if details.is_forgot:
@@ -112,7 +135,6 @@ async def employee_verify(details:Verify,bgt:BackgroundTasks,request:Request):
         else:
             bgt.add_task(accept_email,href,details.employee_email,details.employee_name)
 
-        #bgt.add_task(remove_waiting_lis,link_id)
         return JSONResponse(
             status_code=200,
             content="registered successfully waiting for conformation"
@@ -129,36 +151,42 @@ async def employee_verify(details:Verify,bgt:BackgroundTasks,request:Request):
 
 @router.get("/employee/registeration/store/{link_id}")
 async def store_employee_register(link_id:str,bgt:BackgroundTasks,session:Session=Depends(get_db_session),is_forgot:bool=Query(False)):
-    registeration_cred=waiting_lis.get(link_id)
+    #waiting_lis.get(link_id)
+    redis_cache=Redis.from_url(REDIS_SERVER_URL)
+    registeration_cred=redis_cache.get(link_id)
     if registeration_cred:
-        ic("hello from stored",waiting_lis[link_id].get("employee_name"))
-        obj=RegisterWebauthnEmployee(
-                session=session,
-                employee_name=waiting_lis[link_id].get("employee_name"),
-                employee_email=waiting_lis[link_id].get("employee_email"),
-            )
-        
-        if is_forgot:
-            greet_content=forgot_accept_greet(waiting_lis[link_id].get("employee_email"),waiting_lis[link_id].get("employee_name"))
-            bgt.add_task(
-                obj.update_registered_employee,
-                waiting_lis[link_id].get("credential_id"),
-                public_key=waiting_lis[link_id].get("public_key"),
-                sign_count=waiting_lis[link_id].get("sign_count"),
-                aaguid=waiting_lis[link_id].get("aaguid")
-            )
-        else:
-            greet_content=register_accept_greet(waiting_lis[link_id].get("employee_email"),waiting_lis[link_id].get("employee_name"))
-            bgt.add_task(
-                obj.add_registered_employee,
-                waiting_lis[link_id].get("credential_id"),
-                public_key=waiting_lis[link_id].get("public_key"),
-                sign_count=waiting_lis[link_id].get("sign_count"),
-                aaguid=waiting_lis[link_id].get("aaguid")
-            )
+        registeration_cred=json.loads(registeration_cred)
+        ic(registeration_cred)
+        if registeration_cred:
+            ic("hello from stored",registeration_cred)
+            obj=RegisterWebauthnEmployee(
+                    session=session,
+                    employee_name=registeration_cred.get("employee_name"),
+                    employee_email=registeration_cred.get("employee_email"),
+                )
+            
+            if is_forgot:
+                greet_content=forgot_accept_greet(registeration_cred.get("employee_email"),registeration_cred.get("employee_name"))
+                bgt.add_task(
+                    obj.update_registered_employee,
+                    base64.b64decode(registeration_cred.get("credential_id")),
+                    base64.b64decode(registeration_cred.get("public_key")),
+                    registeration_cred.get("sign_count"),
+                    registeration_cred.get("aaguid")
+                )
+            else:
+                greet_content=register_accept_greet(registeration_cred.get("employee_email"),registeration_cred.get("employee_name"))
+                bgt.add_task(
+                    obj.add_registered_employee,
+                    base64.b64decode(registeration_cred.get("credential_id")),
+                    base64.b64decode(registeration_cred.get("public_key")),
+                    registeration_cred.get("sign_count"),
+                    registeration_cred.get("aaguid")
+                )
 
-        del waiting_lis[link_id]
-        return Response(content=greet_content,media_type="text/html")
+            #del waiting_lis[link_id]
+            redis_cache.delete(link_id)
+            return Response(content=greet_content,media_type="text/html")
     return Response(
         status_code=404,
         content=NOT_FOUND,
