@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from fastapi import APIRouter,HTTPException,Depends,BackgroundTasks,Query,Response,Request
 from fastapi.responses import JSONResponse
 from webauthn import generate_registration_options,verify_registration_response,options_to_json
-from webauthn.helpers.structs import AuthenticatorSelectionCriteria,AuthenticatorAttachment,AttestationConveyancePreference,UserVerificationRequirement
+from webauthn.helpers.structs import AuthenticatorSelectionCriteria,AuthenticatorAttachment,AttestationConveyancePreference,UserVerificationRequirement,ResidentKeyRequirement
 from ..schemas.resgisteration import Register,Verify
 from database.operation import RegisterWebauthnEmployee,Session
 from database.main import get_db_session
@@ -56,10 +56,12 @@ async def register_employee(details:Register,session:Session=Depends(get_db_sess
             user_id=secrets.token_bytes(16),
             user_name=details.employee_email,
             user_display_name=details.employee_name,
-            challenge=secrets.token_bytes(32),
+            challenge=secrets.token_bytes(64),
             authenticator_selection=AuthenticatorSelectionCriteria(
                 authenticator_attachment=AuthenticatorAttachment.PLATFORM,
-                user_verification=UserVerificationRequirement.REQUIRED
+                user_verification=UserVerificationRequirement.REQUIRED,
+                resident_key=ResidentKeyRequirement.REQUIRED,
+
             ),
             attestation=AttestationConveyancePreference.DIRECT
         )

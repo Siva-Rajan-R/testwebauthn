@@ -39,7 +39,7 @@ async def employee_authentication(details:Authenticate,session:Session=Depends(g
     try:
         options=generate_authentication_options(
             rp_id=RP_ID,
-            challenge=secrets.token_bytes(32),
+            challenge=secrets.token_bytes(64),
             user_verification=UserVerificationRequirement.REQUIRED,
         )
         ic(options)
