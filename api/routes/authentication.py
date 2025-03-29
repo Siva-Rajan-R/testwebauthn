@@ -12,8 +12,8 @@ import secrets
 from redis import Redis
 import json
 from icecream import ic
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")
@@ -93,7 +93,7 @@ async def employee_authentication_verify(details:Verify,request:Request,bgt:Back
         redis_cache.delete(details.employee_email)
         bgt.add_task(obj.update_sign_count,response.new_sign_count,credentials[0].get("employee_id"))
         resource=await obj.is_employee_eligible(details.latitude,details.longitude,request.client.host)
-        
+        ic(request.client.host,resource)
         return resource
     except HTTPException:
         raise

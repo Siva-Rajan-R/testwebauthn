@@ -12,21 +12,22 @@ from database.main import get_db_session
 import secrets
 import uuid
 from icecream import ic
-from ..dependencies.email import accept_email,forgot_email
+from ..dependencies.email import accept_email,forgot_email,employee_register_successfull_email,employee_forgot_successfull_email
 from ..dependencies.greet import register_accept_greet,forgot_accept_greet,NOT_FOUND
 import time
 import base64
 from redis import Redis
 import json
 
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 RP_ID=os.getenv("RP_ID")
 RP_NAME=os.getenv("RP_NAME")
 EXPECTED_ORIGIN=os.getenv("EXPECTED_ORIGIN")
 EXPECTED_RP_ID=os.getenv("EXPECTED_RP_ID")
 REDIS_SERVER_URL=os.getenv("REDIS_SERVER_URL")
+FRONTEND_URL=os.getenv("FRONTEND_URL")
 
 
 router=APIRouter(
@@ -178,6 +179,13 @@ async def store_employee_register(link_id:str,bgt:BackgroundTasks,session:Sessio
                     registeration_cred.get("sign_count"),
                     registeration_cred.get("aaguid")
                 )
+
+                bgt.add_task(
+                    employee_forgot_successfull_email,
+                    FRONTEND_URL,
+                    registeration_cred.get("employee_email"),
+                    registeration_cred.get("employee_name")
+                )
             else:
                 greet_content=register_accept_greet(registeration_cred.get("employee_email"),registeration_cred.get("employee_name"))
                 bgt.add_task(
@@ -187,7 +195,12 @@ async def store_employee_register(link_id:str,bgt:BackgroundTasks,session:Sessio
                     registeration_cred.get("sign_count"),
                     registeration_cred.get("aaguid")
                 )
-
+                bgt.add_task(
+                    employee_register_successfull_email,
+                    FRONTEND_URL,
+                    registeration_cred.get("employee_email"),
+                    registeration_cred.get("employee_name")
+                )
             #del waiting_lis[link_id]
             redis_cache.delete(link_id)
             return Response(content=greet_content,media_type="text/html")

@@ -170,7 +170,7 @@ class AuthenticationWebauthnEmployee(__AuthenticationInputs):
 
                     ic("naan chinna")
                     ic(resources)
-
+                    
                     return {
                         "accessibility_scope":"both protected and unprotected resources",
                         "resources":resources
